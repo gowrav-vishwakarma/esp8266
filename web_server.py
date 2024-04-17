@@ -17,6 +17,7 @@ def start():
         request = cl.recv(1024)
         request = str(request)
         path = request.split(' ')[1]
+        response=""
 
         if path.startswith('/config'):
             response = config_form()
@@ -80,7 +81,7 @@ def display_price(request):
     code = params.get('code', 'N/A')
 
     # Create price information string
-    price_info = f"MRP: ${mrp}, Sale: ${sale_price}"
+    price_info = f"{mrp}/- => {sale_price}/-"
     code_info = f"Code: {code}"
 
     # Display on LCD

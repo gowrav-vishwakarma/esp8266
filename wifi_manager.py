@@ -2,7 +2,7 @@
 import network
 from time import sleep
 from machine import unique_id, Pin, I2C
-
+from i2c_lcd import I2CLcd
 from lcd_setup import lcd, i2c
 
 
