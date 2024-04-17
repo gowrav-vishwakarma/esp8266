@@ -12,3 +12,4 @@ def read_config():
 def write_config(config):
     with open('config.json', 'w') as f:
         json.dump(config, f)  # Changed from ujson to json
+

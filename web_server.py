@@ -1,6 +1,9 @@
 # web_server.py
 import socket
 from config_manager import read_config, write_config
+from lcd_setup import lcd, i2c
+from i2c_lcd import I2CLcd
+
 
 def start():
     addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
@@ -30,18 +33,65 @@ def config_form():
     return '<form action="/saveconfig"><input name="ssid"><input name="password"><input type="submit"></form>'
 
 def extract_config(request):
-    # Extracts SSID and password from the request
-    lines = request.split('\r\n')
-    body = lines[-1]  # Assuming the body content in the last line
-    params = body.split('&')
-    config = {param.split('=')[0]: param.split('=')[1] for param in params}
-    return config
+    # Finds the start of the query string and extracts it
+    start = request.find('?') + 1
+    end = request.find(' ', start)
+    query = request[start:end]
+
+    # Parse the query string manually
+    params = {}
+    for param in query.split('&'):
+        key_value = param.split('=')
+        if len(key_value) == 2:
+            key, value = key_value
+            params[key] = unquote_plus(value)
+
+    return params
+
+def unquote_plus(string):
+    # Replaces '+' with ' ' and decodes URL-encoded % escapes
+    string = string.replace('+', ' ')
+    parts = string.split('%')
+    if len(parts) == 1:
+        return string
+    string = parts[0]
+    for item in parts[1:]:
+        try:
+            string += chr(int(item[:2], 16)) + item[2:]
+        except ValueError:
+            string += '%' + item
+    return string
 
 def display_price(request):
-    # Logic to extract price data from the request and display it
-    price_info = "MRP: $100, Sale Price: $80, Code: 12345"  # Mock data
-    print(price_info)  # Display on console for now, later switch to LCD
+    # Extract query parameters
+    start = request.find('?') + 1
+    end = request.find(' ', start)
+    query = request[start:end]
+    params = {}
+    for param in query.split('&'):
+        key_value = param.split('=')
+        if len(key_value) == 2:
+            key, value = key_value
+            params[key] = unquote_plus(value)
+
+    # Extract specific price information
+    mrp = params.get('mrp', 'N/A')
+    sale_price = params.get('sale_price', 'N/A')
+    code = params.get('code', 'N/A')
+
+    # Create price information string
+    price_info = f"MRP: ${mrp}, Sale: ${sale_price}"
+    code_info = f"Code: {code}"
+
+    # Display on LCD
+    lcd.lcd_string(price_info, I2CLcd.LCD_LINE_1)
+    lcd.lcd_string(code_info, I2CLcd.LCD_LINE_2)
+
+
+    print(price_info)  # Optionally log this to the console or display on an LCD
     return price_info
+
 
 def notify_server(mac, ip):
     print("MAC: {}, IP: {}".format(mac, ip))  # This would be an HTTP request in a real scenario
+
