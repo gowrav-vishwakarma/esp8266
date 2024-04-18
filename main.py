@@ -37,6 +37,7 @@ def update_display():
         wifi_manager.setup_ap_mode()
     elif current_mode == MODE_SHOW_IP:
         ip, mac = wifi_manager.get_ip(), wifi_manager.get_mac()
+        mac = mac.replace(':', '')  # Remove colons to save space
         lcd.lcd_string(f"IP: {ip}", I2CLcd.LCD_LINE_1)
         lcd.lcd_string(f"{mac}", I2CLcd.LCD_LINE_2)
     elif current_mode == MODE_SHOW_PRICE:
