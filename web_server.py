@@ -3,54 +3,94 @@ import socket
 from config_manager import read_config, write_config
 from lcd_setup import lcd, i2c
 from i2c_lcd import I2CLcd
-
+import machine
 
 def start():
     addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
     s = socket.socket()
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(addr)
     s.listen(1)
     print('Listening on', addr)
 
+    error_count = 0  # Initialize error counter
+
     while True:
-        cl, addr = s.accept()
-        request = cl.recv(1024)
-        request = str(request)
-        path = request.split(' ')[1]
-        response=""
+        try:
+            cl, addr = s.accept()
+            print('Connection from', addr)
+            try:
+                request = cl.recv(1024)
+                if not request:
+                    print('No data received!')
+                    lcd.lcd_string("No data received", I2CLcd.LCD_LINE_1)
+                    cl.close()
+                    continue
 
-        if path.startswith('/config'):
-            response = config_form()
-        elif path.startswith('/saveconfig'):
-            write_config(extract_config(request))
-            response = 'Config saved! Reboot device.'
-        elif path.startswith('/price'):
-            response = display_price(request)
+                request = str(request)
+                path = request.split(' ')[1]
+                response = ""
 
-        cl.send('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n' + response)
-        cl.close()
+                if path.startswith('/config'):
+                    response = config_form()
+                elif path.startswith('/saveconfig'):
+                    write_config(extract_config(request))
+                    response = 'Config saved! Rebooting device...'
+                    cl.send('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n' + response)
+                    cl.close()
+                    machine.reset()
+                elif path.startswith('/price'):
+                    response = display_price(request)
+
+                cl.send('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n' + response)
+            except Exception as e:
+                print('Failed to handle request:', e)
+                lcd.lcd_string("Error: See console", I2CLcd.LCD_LINE_1)
+                error_count += 1
+            finally:
+                cl.close()
+        except OSError as e:
+            print('Network error:', e)
+            lcd.lcd_string("Net error: Reboot?", I2CLcd.LCD_LINE_1)
+            error_count += 1
+
+        # Check if errors have reached a threshold
+        if error_count >= 10:
+            lcd.lcd_string("Many errors! Rebooting...", I2CLcd.LCD_LINE_1)
+            machine.sleep(5000)  # Wait for 5 seconds before rebooting
+            machine.reset()
+
 
 def config_form():
-    return '<form action="/saveconfig"><input name="ssid"><input name="password"><input type="submit"></form>'
+    config = read_config()
+    ssid = config.get('ssid', '')
+    password = config.get('password', '')
+    warehouse_id = config.get('warehouse_id', '')
+    register_url = config.get('register_url', "http://default.url/register")
+
+    return '''
+    <form action="/saveconfig" method="get">
+        SSID: <input name="ssid" type="text" placeholder="SSID" value="{ssid}"><br>
+        Password: <input name="password" type="password" placeholder="Password" value="{password}"><br>
+        Warehouse ID: <input name="warehouse_id" type="text" placeholder="Warehouse ID" value="{warehouse_id}"><br>
+        Register URL: <input name="register_url" type="text" value="{register_url}"><br>
+        <input type="submit" value="Save Configuration">
+    </form>
+    '''.format(ssid=ssid, password=password, warehouse_id=warehouse_id, register_url=register_url)
 
 def extract_config(request):
-    # Finds the start of the query string and extracts it
     start = request.find('?') + 1
     end = request.find(' ', start)
     query = request[start:end]
-
-    # Parse the query string manually
     params = {}
     for param in query.split('&'):
         key_value = param.split('=')
         if len(key_value) == 2:
             key, value = key_value
             params[key] = unquote_plus(value)
-
     return params
 
 def unquote_plus(string):
-    # Replaces '+' with ' ' and decodes URL-encoded % escapes
     string = string.replace('+', ' ')
     parts = string.split('%')
     if len(parts) == 1:
@@ -64,7 +104,6 @@ def unquote_plus(string):
     return string
 
 def display_price(request):
-    # Extract query parameters
     start = request.find('?') + 1
     end = request.find(' ', start)
     query = request[start:end]
@@ -75,19 +114,20 @@ def display_price(request):
             key, value = key_value
             params[key] = unquote_plus(value)
 
-    # Extract specific price information
     mrp = params.get('mrp', 'N/A')
     sale_price = params.get('sale_price', 'N/A')
     code = params.get('code', 'N/A')
 
-    # Create price information string
     price_info = f"{mrp}/- => {sale_price}/-"
     code_info = f"Code: {code}"
 
-    # Display on LCD
+    # Save last price to config
+    config = read_config()
+    config['last_price'] = price_info
+    write_config(config)
+
     lcd.lcd_string(price_info, I2CLcd.LCD_LINE_1)
     lcd.lcd_string(code_info, I2CLcd.LCD_LINE_2)
-
 
     print(price_info)  # Optionally log this to the console or display on an LCD
     return price_info

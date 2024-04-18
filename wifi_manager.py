@@ -34,3 +34,7 @@ def is_connected():
 def get_ip():
     return sta.ifconfig()[0]
 
+def get_mac():
+    return ':'.join(['%02X' % b for b in sta.config('mac')])
+
+
