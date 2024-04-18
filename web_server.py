@@ -119,11 +119,12 @@ def display_price(request):
     code = params.get('code', 'N/A')
 
     price_info = f"{mrp}/- => {sale_price}/-"
-    code_info = f"Code: {code}"
+    code_info = f"{code}"
 
     # Save last price to config
     config = read_config()
     config['last_price'] = price_info
+    config['last_code'] = code_info
     write_config(config)
 
     lcd.lcd_string(price_info, I2CLcd.LCD_LINE_1)
