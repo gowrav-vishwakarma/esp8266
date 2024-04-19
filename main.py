@@ -22,6 +22,7 @@ last_button_press = time.ticks_ms()  # Initialize last button press time
 # Initialize button
 button = Pin(0, Pin.IN, Pin.PULL_UP)  # D3 on NodeMCU
 
+
 def button_pressed(pin):
     global current_mode, last_button_press
     current_time = time.ticks_ms()
@@ -30,6 +31,7 @@ def button_pressed(pin):
     last_button_press = current_time
     current_mode = (current_mode + 1) % 3  # Cycle through modes 0, 1, 2
     update_display()
+
 
 def update_display():
     lcd.clear()  # Clear the display first to ensure it is clean
@@ -47,6 +49,7 @@ def update_display():
         else:
             lcd.lcd_string("No Price/Code Set", I2CLcd.LCD_LINE_1)
 
+
 def run():
     global last_price, last_code, current_mode
     config_data = config_manager.read_config()
@@ -54,21 +57,27 @@ def run():
     last_code = config_data.get('last_code', '')
 
     if not wifi_manager.is_configured(config_data):
+        print('Wifi not configured')
         current_mode = MODE_AP
         wifi_manager.setup_ap_mode()
     else:
         ssid = config_data.get('ssid', '')
         password = config_data.get('password', '')
         if wifi_manager.connect_wifi(ssid, password):
+            ip = wifi_manager.get_ip()
+            mac = wifi_manager.get_mac()
+            web_server.notify_server(mac, ip)  # Call notify_server here after successful WiFi connection
             if last_price and last_code:
                 current_mode = MODE_SHOW_PRICE
             else:
                 current_mode = MODE_SHOW_IP
         else:
+            print('Wifi could not get connected')
             current_mode = MODE_AP
             wifi_manager.setup_ap_mode()
     update_display()
     web_server.start()
+
 
 button.irq(trigger=Pin.IRQ_FALLING, handler=button_pressed)  # Interrupt on falling edge (button press)
 

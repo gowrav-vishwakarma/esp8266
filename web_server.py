@@ -4,6 +4,8 @@ from config_manager import read_config, write_config
 from lcd_setup import lcd, i2c
 from i2c_lcd import I2CLcd
 import machine
+import urequests  # Import the urequests library for HTTP requests
+
 
 def start():
     addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
@@ -135,5 +137,27 @@ def display_price(request):
 
 
 def notify_server(mac, ip):
-    print("MAC: {}, IP: {}".format(mac, ip))  # This would be an HTTP request in a real scenario
+    config = read_config()
+    warehouse_id = config.get('warehouse_id', 'default_warehouse_id')  # default as a fallback
+    register_url = config.get('register_url', "https://ahmedabad-wmsnest.service.staging.frendy.in:3000/pos"
+                                              "/registerdevice")  # default URL as a fallback
 
+    # Cleanup MAC address format by removing ':' if present
+    mac = mac.replace(':', '')
+
+    # Construct the URL with parameters
+    url = f"{register_url}?warehouseId={warehouse_id}&macAddress={mac}&localIp={ip}"
+
+    try:
+        response = urequests.get(url)
+        if response.status_code == 200:
+            print("Successfully registered device.")
+            lcd.lcd_string("Device registered", I2CLcd.LCD_LINE_1)
+        else:
+            print("Failed to register device: ", response.text)
+            lcd.lcd_string("Registration failed", I2CLcd.LCD_LINE_1)
+
+        response.close()
+    except Exception as e:
+        print("Error sending registration request: ", e)
+        lcd.lcd_string("HTTP request failed", I2CLcd.LCD_LINE_1)
