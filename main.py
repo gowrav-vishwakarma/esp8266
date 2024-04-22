@@ -63,6 +63,7 @@ def run():
     else:
         ssid = config_data.get('ssid', '')
         password = config_data.get('password', '')
+        print("ssid", ssid, "Password" ,password)
         if wifi_manager.connect_wifi(ssid, password):
             ip = wifi_manager.get_ip()
             mac = wifi_manager.get_mac()

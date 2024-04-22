@@ -4,7 +4,7 @@ from config_manager import read_config, write_config
 from lcd_setup import lcd, i2c
 from i2c_lcd import I2CLcd
 import machine
-import urequests  # Import the urequests library for HTTP requests
+import urequests as requests
 
 
 def start():
@@ -138,26 +138,34 @@ def display_price(request):
 
 def notify_server(mac, ip):
     config = read_config()
-    warehouse_id = config.get('warehouse_id', 'default_warehouse_id')  # default as a fallback
-    register_url = config.get('register_url', "https://ahmedabad-wmsnest.service.staging.frendy.in:3000/pos"
-                                              "/registerdevice")  # default URL as a fallback
+    warehouse_id = config.get('warehouse_id', 'default_warehouse_id')  # Provide a default warehouse_id
+    register_url = config.get('register_url', "https://ahmedabad-wmsnest.service.staging.frendy.in/pos/registerdevice")
 
-    # Cleanup MAC address format by removing ':' if present
+    # Clean up MAC address format by removing ':' if present
     mac = mac.replace(':', '')
 
     # Construct the URL with parameters
     url = f"{register_url}?warehouseId={warehouse_id}&macAddress={mac}&localIp={ip}"
+    # url = f"https://google-translate1.p.rapidapi.com/language/translate/v2/languages?warehouseId={warehouse_id}&macAddress={mac}&localIp={ip}"
+    print("Making HTTP GET request to:", url)
+
+    headers = {
+       'Host': "ahmedabad-wmsnest.service.staging.frendy.in",
+       'User-Agent': 'ESP8266'
+    }
 
     try:
-        response = urequests.get(url)
+        response = requests.get(url, headers=headers)
+        print("HTTP Status Code:", response.status_code)
+        print("Response Headers:", response.headers)
+        print("Response Body:", response.text)
         if response.status_code == 200:
             print("Successfully registered device.")
             lcd.lcd_string("Device registered", I2CLcd.LCD_LINE_1)
         else:
-            print("Failed to register device: ", response.text)
+            print("Failed to register device:", response.text)
             lcd.lcd_string("Registration failed", I2CLcd.LCD_LINE_1)
-
-        response.close()
+        response.close()  # It's important to close response objects to free up resources.
     except Exception as e:
-        print("Error sending registration request: ", e)
+        print("Error sending registration request:", e)
         lcd.lcd_string("HTTP request failed", I2CLcd.LCD_LINE_1)
