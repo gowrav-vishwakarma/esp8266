@@ -44,8 +44,8 @@ def update_display():
         lcd.lcd_string(f"{mac}", I2CLcd.LCD_LINE_2)
     elif current_mode == MODE_SHOW_PRICE:
         if last_price and last_code:
-            lcd.lcd_string(f"{sale_price}/- ({mrp}/-)", I2CLcd.LCD_LINE_1)
-            lcd.lcd_string(f"{code}", I2CLcd.LCD_LINE_2)
+            lcd.lcd_string(f"{last_price}", I2CLcd.LCD_LINE_1)
+            lcd.lcd_string(f"{last_code}", I2CLcd.LCD_LINE_2)
         else:
             lcd.lcd_string("No Price/Code Set", I2CLcd.LCD_LINE_1)
 

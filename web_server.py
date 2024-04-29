@@ -32,6 +32,8 @@ def start():
                 request = str(request)
                 path = request.split(' ')[1]
                 response = ""
+                headers = "HTTP/1.1 200 OK\r\nContent-type: text/html\r\nAccess-Control-Allow-Origin: *\r\n\r\n"  # Adding CORS header
+
 
                 if path.startswith('/config'):
                     response = config_form()
@@ -44,7 +46,8 @@ def start():
                 elif path.startswith('/price'):
                     response = display_price(request)
 
-                cl.send('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n' + response)
+                full_response = headers + response  # Append headers and response
+                cl.send(full_response.encode('utf-8'))
             except Exception as e:
                 print('Failed to handle request:', e)
                 lcd.lcd_string("Error: See console", I2CLcd.LCD_LINE_1)
