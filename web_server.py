@@ -120,7 +120,7 @@ def display_price(request):
     sale_price = params.get('sale_price', 'N/A')
     code = params.get('code', 'N/A')
 
-    price_info = f"{mrp}/- => {sale_price}/-"
+    price_info = f"{sale_price}/- ({mrp}/-)"
     code_info = f"{code}"
 
     # Save last price to config
